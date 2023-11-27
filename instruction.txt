@@ -24,7 +24,7 @@ get: resume_offset (third number in print) for next operations
 # modifing grub, initramfs-tools/conf.d
 modify line in: sudo nano /etc/default/grub
 GRUB_CMDLINE_LINUX_DEFAULT="quiet splash resume=UUID=... resume_offset=..."
-modify new file: sudo nano /etc/initramfs/conf.d/resume
+modify new file: sudo nano /etc/initramfs-tools/conf.d/resume
 RESUME=UUID=...
 RESUME_OFFSET=...
 
@@ -62,7 +62,7 @@ sudo apt remove -y libnvidia-compute-* linux-objects-nvidia-* linux-signatures-n
 sudo apt autoremove -y
 sudo rm /etc/modprobe.d/nvidia-power-management.conf
 # remove and blacklist nouveau (mb excessive)
-sudo apt remove --purge xserver-xorg-nouveau
+sudo apt remove --purge xserver-xorg-video-nouveau
 sudo bash -c "echo blacklist nouveau > /etc/modprobe.d/blacklist-nvidia-nouveau.conf" && sudo bash -c "echo options nouveau modeset=0 >> /etc/modprobe.d/blacklist-nvidia-nouveau.conf"
 # installing NVIDIA drivers
 sudo ubuntu-drivers install nvidia:535
@@ -71,5 +71,5 @@ sudo bash -c "echo options nvidia NVreg_PreserveVideoMemoryAllocations=1 > /etc/
 # backup and modify initramfs
 sudo cp /boot/initrd.img-$(uname -r) ~/initrd.img-$(uname -r)_backup
 sudo update-initramfs -uv
-
+#check systemctl hibernate with something computing using cuda
 #if it worked: hooray! hooray! hooray!
