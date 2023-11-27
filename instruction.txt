@@ -1,0 +1,75 @@
+## REMAKE SWAPFILE
+
+# turn off all swap files
+sudo swapoff --all
+# checking for modified lines in grub, grub.d, initramfs-tools/conf.d
+check: sudo nano /etc/default/grub
+check: cd /etc/default/grub.d && ls -a
+check: cd /etc/initramfs-tools/conf.d && ls -a
+# removing old swapfile
+sudo rm -rf /swapfile
+sudo update-grub
+sudo update-initramfs -u -k all
+# making new swapfile with 80G
+sudo fallocate -l 80G /swapfile
+sudo chmod 0600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+# getting info about swapfile "place": UUID, offset
+sudo findmnt -no UUID -T /swapfile
+get: UUID for next operaions
+
+sudo filefrag -v /swapfile
+get: resume_offset (third number in print) for next operations
+# modifing grub, initramfs-tools/conf.d
+modify line in: sudo nano /etc/default/grub
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash resume=UUID=... resume_offset=..."
+modify new file: sudo nano /etc/initramfs/conf.d/resume
+RESUME=UUID=...
+RESUME_OFFSET=...
+
+sudo update-grub
+sudo update-initramfs -u -k all
+# checking existing swap
+check: top
+MiB Swap: 81920.0 total
+
+# checking hibernate
+systemctl hibernate
+
+#if it worked: hooray!
+
+## MAKE SWAP TO NVIDIA
+
+# checking for hibernate links in NVIDIA
+find /etc/systemd/ -iname nv*
+expected output:
+/etc/systemd/system/systemd-suspend.service.wants/nvidia-suspend.service
+/etc/systemd/system/systemd-suspend.service.wants/nvidia-resume.service
+/etc/systemd/system/systemd-hibernate.service.wants/nvidia-hibernate.service
+/etc/systemd/system/systemd-hibernate.service.wants/nvidia-resume.service
+
+# blacklist nouveau drivers in grub
+modify line in: sudo nano /etc/default/grub
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash resume=UUID=... resume_offset=...  nouveau.blacklist=1"
+
+sudo update-grub
+
+# remove everything nvidia-related (mb excessive)
+sudo apt remove -y --purge '^nvidia-.*'
+sudo apt autoremove -y $(dpkg -l xservev-xorg-video-nvidia* | grep ii | awk '{print $2}')
+sudo apt remove -y libnvidia-compute-* linux-objects-nvidia-* linux-signatures-nvidia-*
+sudo apt autoremove -y
+sudo rm /etc/modprobe.d/nvidia-power-management.conf
+# remove and blacklist nouveau (mb excessive)
+sudo apt remove --purge xserver-xorg-nouveau
+sudo bash -c "echo blacklist nouveau > /etc/modprobe.d/blacklist-nvidia-nouveau.conf" && sudo bash -c "echo options nouveau modeset=0 >> /etc/modprobe.d/blacklist-nvidia-nouveau.conf"
+# installing NVIDIA drivers
+sudo ubuntu-drivers install nvidia:535
+# modifing nvidia-power-management.conf
+sudo bash -c "echo options nvidia NVreg_PreserveVideoMemoryAllocations=1 > /etc/modprobe.d/nvidia-power-management.conf"
+# backup and modify initramfs
+sudo cp /boot/initrd.img-$(uname -r) ~/initrd.img-$(uname -r)_backup
+sudo update-initramfs -uv
+
+#if it worked: hooray! hooray! hooray!
